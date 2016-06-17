@@ -26,6 +26,9 @@ public class DataFeeder {
     private static String serverChannel = "serverChannel";
     private static String channelType = "channelType";
 	
+    private static String delimiter = ",";
+    private static String OKCODE = "200";
+    private static String ABORTCODE = "400";
 	
 	
 	public static void main(String[] args) throws IOException {
@@ -60,7 +63,7 @@ public class DataFeeder {
             // would also return when one of the clients has data to be read or
             // written. It is also possible to perform a nonblocking select
             // using the selectNow() function.
-            // We can also specify the maximum time for which a select function
+            // We can also specidelimiterfy the maximum time for which a select function
             // can be blocked using the select(long timeout) function.
             if (selector.selectNow() == 0)
                 continue;
@@ -134,17 +137,23 @@ public class DataFeeder {
                              * {fName}, 200  - ok, postfixed with filename 
                              * 400 - abort 
                              * */
-                            if (resp.endsWith("200")) { // had to remove \n with trim()
+                            
+                            
+                            if (resp.endsWith(OKCODE)) { // had to remove \n with trim()
                             	System.out.print("Got 200\t");
-                            	String[] r = resp.split(",");
+                            	String[] r = resp.split(delimiter);
+                            	
                             	System.out.println(r.length);
-                            	
-                            	
-                            } else if (resp.endsWith("400")) {
+                            	switch (r.length) {
+                            		case 1: System.out.println("ERROR: got ok from client, but no file name"); break;
+                            		case 2: System.out.println("OK received: " + resp);  break;
+                            		default: System.out.println("ERROR: more than one file requested?\t " + resp); break;
+                            	}
+                            } else if (resp.endsWith(ABORTCODE)) {
+                            	System.out.format("ABORT: Got abort code:\t" + resp);
                             	clientChannel.close();
-                            	
                             } else {
-                            	System.out.format("Got unknown code\t %s\n", resp);
+                            	System.out.format("ERROR: Got unknown code\t %s\n", resp);
                             }
                             
                             buffer.clear();
