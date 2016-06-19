@@ -9,7 +9,9 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 //import java.util.Date;
 
 public class Feeder implements Runnable {
@@ -18,6 +20,8 @@ public class Feeder implements Runnable {
 	private String fileName = "default.txt";
 	private int hz = 0; // number of samples pr second
 	private SocketChannel clientCh;
+	Calendar cal;
+	SimpleDateFormat sdf;
 	
 	public Feeder() {
 		System.out.println("constructing the Feeder:\t" + Thread.currentThread().getId());
@@ -32,6 +36,9 @@ public class Feeder implements Runnable {
 	public void run() {
 		System.out.println("in run: \t" + Thread.currentThread().getId());
 		try {
+			cal = Calendar.getInstance();
+	        sdf = new SimpleDateFormat("HH:mm:ss.SSSZ");
+			
 			sendLoop(readFile(fileName));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -51,6 +58,8 @@ public class Feeder implements Runnable {
 		int index = 0;
 		
 		ByteBuffer bf;
+
+		
 		while (true) {
 			toSend = "";
 			
@@ -60,7 +69,8 @@ public class Feeder implements Runnable {
 			}
 			// TODO send line with time-stamp			
 			toSend = stampTime();
-			toSend += fileContent.get(index++);
+			
+			toSend += fileContent.get(index++) + "";
 			CharBuffer buffer = CharBuffer.wrap(toSend);
             while (buffer.hasRemaining()) {
                 clientCh.write(Charset.defaultCharset()
@@ -104,9 +114,7 @@ public class Feeder implements Runnable {
 	 * @return String with theoretical time
 	 */
 	private String stampTime() {
-		
-		
-		return "TODO; ";
+		return sdf.format(cal.getTime()) + "; ";
 	}
 	
 }
