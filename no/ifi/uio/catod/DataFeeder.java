@@ -112,10 +112,10 @@ public class DataFeeder {
                                 SelectionKey.OP_WRITE);
                         Map<String, String> clientproperties = new HashMap<String, String>();
                         
-                        
-                        Thread feeder = new Thread(new Feeder());
+                        System.out.println("New conneciton, so we set up a Thread");
+                        Thread feeder = new Thread(new Feeder(clientSocketChannel));
                         if (threadList.add(feeder)) {
-                        	clientproperties.put("threadIndex", Integer.toString(threadList.indexOf(feeder))); // map associated thread to index
+                        	clientproperties.put("thread", Integer.toString(threadList.indexOf(feeder))); // map associated thread to index
                         }
                         
                         clientproperties.put(channelType, clientChannel); // map channel type to client channel
@@ -166,7 +166,7 @@ public class DataFeeder {
                             	System.out.println(r.length);
                             	switch (r.length) {
                             		case 1: System.out.println("ERROR: got ok from client, but no file name"); break;
-                            		case 2: System.out.println("OK received: " + resp); startSending(f, clientChannel);  break;
+                            		case 2: System.out.println("OK received: " + resp); f.start();  break;
                             		default: System.out.println("ERROR: more than one file requested?\t " + resp); break;
                             	}
                             } else if (resp.endsWith(ABORTCODE)) {
@@ -198,10 +198,9 @@ public class DataFeeder {
 	}
 
 	
-	private static void startSending(Thread feeder, SocketChannel clientCh) {
+	private static void startSending(Thread feeder) {
 		// TODO Auto-generated method stub
-		
-        feeder.start();
+        feeder.start(); // launch the thread?
 
 	}
 

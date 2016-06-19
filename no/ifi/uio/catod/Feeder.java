@@ -5,6 +5,9 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 //import java.util.Date;
@@ -14,16 +17,26 @@ public class Feeder implements Runnable {
 	/* To avoid null reference */
 	private String fileName = "default.txt";
 	private int hz = 0; // number of samples pr second
-
+	private SocketChannel clientCh;
 	
 	public Feeder() {
 		System.out.println("constructing the Feeder:\t" + Thread.currentThread().getId());
 	}
 	
+	public Feeder(SocketChannel clientChannel) {
+		clientCh = clientChannel;
+		
+	}
+	
 	@Override
 	public void run() {
 		System.out.println("in run: \t" + Thread.currentThread().getId());
-
+		try {
+			sendLoop(readFile(fileName));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 	}
 	
@@ -31,24 +44,30 @@ public class Feeder implements Runnable {
 	 * Loops through the file and passes discrete data points
 	 * from the time series to the client
 	 * @param fileContent
+	 * @throws IOException 
 	 */
-	public void sendLoop(ArrayList<String> fileContent) {
+	public void sendLoop(ArrayList<String> fileContent) throws IOException {
 		String toSend;
 		int index = 0;
 		
-		
+		ByteBuffer bf;
 		while (true) {
 			toSend = "";
-			//TODO feed the file to recipient
+			
 			if (index > (fileContent.size()-1)) {
 				index = 0;
 				return; // TEMP: remove this when not testing
 			}
-			
+			// TODO send line with time-stamp			
 			toSend = stampTime();
 			toSend += fileContent.get(index++);
-			
-			// TODO send line with time-stamp
+			CharBuffer buffer = CharBuffer.wrap(toSend);
+            while (buffer.hasRemaining()) {
+                clientCh.write(Charset.defaultCharset()
+                        .encode(buffer));
+            }
+            
+            buffer.clear();
 		}
 	}
 	
@@ -65,8 +84,8 @@ public class Feeder implements Runnable {
 		ArrayList<String> content = new ArrayList<String>();
 		
 		try (
-
-			    InputStream fis = new FileInputStream("the_file_name");
+				
+			    InputStream fis = new FileInputStream("c:\\" + fName);
 			    InputStreamReader inputStream = new InputStreamReader(fis, Charset.forName("UTF-8"));
 			    BufferedReader br = new BufferedReader(inputStream);
 			) {
