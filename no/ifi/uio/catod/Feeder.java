@@ -20,8 +20,6 @@ public class Feeder implements Runnable {
 	private String fileName = "default.txt";
 	private int hz = 0; // number of samples pr second
 	private SocketChannel clientCh;
-	Calendar cal;
-	SimpleDateFormat sdf;
 	
 	public Feeder() {
 		System.out.println("constructing the Feeder:\t" + Thread.currentThread().getId());
@@ -36,9 +34,6 @@ public class Feeder implements Runnable {
 	public void run() {
 		System.out.println("in run: \t" + Thread.currentThread().getId());
 		try {
-			cal = Calendar.getInstance();
-	        sdf = new SimpleDateFormat("HH:mm:ss.SSSZ");
-			
 			sendLoop(readFile(fileName));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -114,7 +109,7 @@ public class Feeder implements Runnable {
 	 * @return String with theoretical time
 	 */
 	private String stampTime() {
-		return sdf.format(cal.getTime()) + "; ";
+		return Long.toString(System.currentTimeMillis());
 	}
 	
 }
