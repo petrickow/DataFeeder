@@ -9,10 +9,13 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+
+import sun.awt.AWTAccessor.ClientPropertyKeyAccessor;
 
 
 /**
@@ -30,11 +33,14 @@ public class DataFeeder {
     private static String OKCODE = "200";
     private static String ABORTCODE = "400";
 	
+    
+    private static ArrayList<Thread> threadList;
 	
 	public static void main(String[] args) throws IOException {
 		// TODO Create a non-blocking server socket:
 		int port = 4444;
 		String localhost = "localhost";
+		threadList = new ArrayList<Thread>();
 		
 		ServerSocketChannel channel = ServerSocketChannel.open();
 
@@ -54,7 +60,7 @@ public class DataFeeder {
         
         for (;;) {
         	 
-            // the select method is a blocking method which returns when atleast
+            // the select method is a blocking method which returns when at least
             // one of the registered
             // channel is selected. In this example, when the socket accepts a
             // new connection, this method
@@ -63,7 +69,7 @@ public class DataFeeder {
             // would also return when one of the clients has data to be read or
             // written. It is also possible to perform a nonblocking select
             // using the selectNow() function.
-            // We can also specidelimiterfy the maximum time for which a select function
+            // We can also specify the maximum time for which a select function
             // can be blocked using the select(long timeout) function.
             if (selector.selectNow() == 0)
                 continue;
@@ -73,15 +79,16 @@ public class DataFeeder {
             
             while (iterator.hasNext()) {
                 SelectionKey key = iterator.next();
-                System.out.println(key.attachment().toString());
+                System.out.println(key.toString());
 
                 // the selection key could either by the socketserver informing
                 // that a new connection has been made, or
                 // a socket client that is ready for read/write
                 // we use the properties object attached to the channel to find
                 // out the type of channel.
-                if (((Map<String, String>) key.attachment()).get(channelType).equals(
-                        serverChannel)) {
+                Map<String, String> propertiesMap = (Map<String, String>)  key.attachment();
+                if ((propertiesMap.get(channelType).equals(
+                        serverChannel))) {
 
                 	// a new connection has been obtained. This channel is
                     // therefore a socket server.
@@ -104,7 +111,17 @@ public class DataFeeder {
                                 selector, SelectionKey.OP_READ,
                                 SelectionKey.OP_WRITE);
                         Map<String, String> clientproperties = new HashMap<String, String>();
-                        clientproperties.put(channelType, clientChannel);
+                        
+                        
+                        Thread feeder = new Thread(new Feeder());
+                        if (threadList.add(feeder)) {
+                        	clientproperties.put("threadIndex", Integer.toString(threadList.indexOf(feeder))); // map associated thread to index
+                        }
+                        
+                        clientproperties.put(channelType, clientChannel); // map channel type to client channel
+                        
+                        
+                        
                         clientKey.attach(clientproperties);
  
                         // write something to the new created client
@@ -113,6 +130,7 @@ public class DataFeeder {
                             clientSocketChannel.write(Charset.defaultCharset()
                                     .encode(buffer));
                         }
+
                         buffer.clear();
                     }
  
@@ -123,6 +141,8 @@ public class DataFeeder {
                     // buffer for reading
                     ByteBuffer buffer = ByteBuffer.allocate(20);
                     SocketChannel clientChannel = (SocketChannel) key.channel();
+                    //SelectionKey k = clientChannel.keyFor(key.selector());
+                    //HashMap<String, String> map = (HashMap<String, String>) k.attachment();
                     int bytesRead = 0;
                     if (key.isReadable()) {
                         // the channel is non blocking so keep it open till the
@@ -133,7 +153,7 @@ public class DataFeeder {
                                     buffer).toString().trim();
                             
                             /* 
-                             * Create a simple text-based html inspired protocol for interaticon 
+                             * Create a simple text-based http inspired protocol for interaticon 
                              * {fName}, 200  - ok, postfixed with filename 
                              * 400 - abort 
                              * */
@@ -142,11 +162,11 @@ public class DataFeeder {
                             if (resp.endsWith(OKCODE)) { // had to remove \n with trim()
                             	System.out.print("Got 200\t");
                             	String[] r = resp.split(delimiter);
-                            	
+                            	Thread f = threadList.get(Integer.valueOf(propertiesMap.get("thread"))); 
                             	System.out.println(r.length);
                             	switch (r.length) {
                             		case 1: System.out.println("ERROR: got ok from client, but no file name"); break;
-                            		case 2: System.out.println("OK received: " + resp);  break;
+                            		case 2: System.out.println("OK received: " + resp); startSending(f, clientChannel);  break;
                             		default: System.out.println("ERROR: more than one file requested?\t " + resp); break;
                             	}
                             } else if (resp.endsWith(ABORTCODE)) {
@@ -178,6 +198,14 @@ public class DataFeeder {
 	}
 
 	
+	private static void startSending(Thread feeder, SocketChannel clientCh) {
+		// TODO Auto-generated method stub
+		
+        feeder.start();
+
+	}
+
+
 	private static boolean spawn() {
 		
 		return false;
