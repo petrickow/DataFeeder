@@ -120,12 +120,10 @@ public class DataFeeder {
                         
                         clientproperties.put(channelType, clientChannel); // map channel type to client channel
                         
-                        
-                        
                         clientKey.attach(clientproperties);
  
                         // write something to the new created client
-                        CharBuffer buffer = CharBuffer.wrap("Ready?");
+                        CharBuffer buffer = CharBuffer.wrap("Connection established, 200");
                         while (buffer.hasRemaining()) {
                             clientSocketChannel.write(Charset.defaultCharset()
                                     .encode(buffer));
@@ -152,11 +150,14 @@ public class DataFeeder {
                             String resp = Charset.defaultCharset().decode(
                                     buffer).toString().trim();
                             
-                            /* 
-                             * Create a simple text-based http inspired protocol for interaticon 
-                             * {fName}, 200  - ok, postfixed with filename 
-                             * 400 - abort 
-                             * */
+                            /**
+                             * Create a simple text-based http inspired protocol for interactions
+                             * Postfixed status codes and human readable status description
+                             * ',' used as delimiter  
+                             * {fName}, 200  - OK 
+                             * {message}, 400 - abort
+                             * TODO: down sample, restart etc 
+                             ***/
                             
                             
                             if (resp.endsWith(OKCODE)) { // had to remove \n with trim()
@@ -165,7 +166,7 @@ public class DataFeeder {
                             	Thread f = threadList.get(Integer.valueOf(propertiesMap.get("thread"))); 
                             	System.out.println(r.length);
                             	switch (r.length) {
-                            		case 1: System.out.println("ERROR: got ok from client, but no file name"); break;
+                            		case 1: System.out.println("ERROR: got ok from client, but no file name"); break; // TODO: reply to client
                             		case 2: System.out.println("OK received: " + resp); f.start();  break;
                             		default: System.out.println("ERROR: more than one file requested?\t " + resp); break;
                             	}
@@ -197,10 +198,10 @@ public class DataFeeder {
         
 	}
 
-	
+	/*
 	private static void startSending(Thread feeder) {
 		// TODO Auto-generated method stub
-        feeder.start(); // launch the thread?
+        feeder.start(); // launch the thread
 
 	}
 
@@ -209,4 +210,5 @@ public class DataFeeder {
 		
 		return false;
 	}
+	*/
 }

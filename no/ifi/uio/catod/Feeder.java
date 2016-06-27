@@ -89,7 +89,6 @@ public class Feeder implements Runnable {
 		ArrayList<String> content = new ArrayList<String>();
 		
 		try (
-				
 			    InputStream fis = new FileInputStream("c:\\" + fName);
 			    InputStreamReader inputStream = new InputStreamReader(fis, Charset.forName("UTF-8"));
 			    BufferedReader br = new BufferedReader(inputStream);
@@ -98,17 +97,18 @@ public class Feeder implements Runnable {
 			    while ((currentLine = br.readLine()) != null) {
 			        content.add(currentLine);
 			    }
-			} 
-		
+			}
+	
 		return content; 
 	}
-	
+
 	/** 
 	 * Appends a simulated time-stamp based on the recording frequency of the
 	 * signal being sent
 	 * @return String with theoretical time
 	 */
 	private String stampTime() {
+		
 		return Long.toString(System.currentTimeMillis());
 	}
 	
