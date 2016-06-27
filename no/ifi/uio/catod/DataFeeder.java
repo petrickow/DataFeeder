@@ -15,13 +15,10 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-import sun.awt.AWTAccessor.ClientPropertyKeyAccessor;
-
-
 /**
  * Small application for simulating sensor node delivering
  * arbitrary data to main application
- * @author catoda
+ * @author Cato Danielsen
  *
  */
 public class DataFeeder {
@@ -192,10 +189,6 @@ public class DataFeeder {
  
             }
         }
-        
-        
-        
-        
 	}
 
 	/*

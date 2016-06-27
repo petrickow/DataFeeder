@@ -87,9 +87,11 @@ public class Feeder implements Runnable {
 	private ArrayList<String> readFile(String fName) throws IOException {
 		
 		ArrayList<String> content = new ArrayList<String>();
-		
+		System.out.println(System.getProperty("user.dir"));
 		try (
-			    InputStream fis = new FileInputStream("c:\\" + fName);
+
+			    InputStream fis = new FileInputStream(System.getProperty("user.dir") + "/" + fName);
+
 			    InputStreamReader inputStream = new InputStreamReader(fis, Charset.forName("UTF-8"));
 			    BufferedReader br = new BufferedReader(inputStream);
 			) {
