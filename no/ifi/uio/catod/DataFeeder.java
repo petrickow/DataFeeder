@@ -29,9 +29,11 @@ public class DataFeeder {
     private static String delimiter = ",";
     private static String OKCODE = "200";
     private static String ABORTCODE = "400";
+    private static int bufferSize = 100;
 	
     
     private static ArrayList<Thread> threadList;
+    private static Map<String, Feeder> feederMap;
 	
 	public static void main(String[] args) throws IOException {
 		// TODO Create a non-blocking server socket:
@@ -51,12 +53,18 @@ public class DataFeeder {
                 SelectionKey.OP_ACCEPT);
         // set property in the key that identifies the channel
         Map<String, String> properties = new HashMap<String, String>();
+        feederMap = new HashMap<String, Feeder>();
+        
         properties.put(channelType, serverChannel);
         socketServerSelectionKey.attach(properties);
 		
+        int i = 0;
+		int count = 10000; // for debug output
         
         for (;;) {
-        	 
+        	
+        	i = i++ % count; // for debugpurposes, count to n and restart i + 1 = iteration
+
             // the select method is a blocking method which returns when at least
             // one of the registered
             // channel is selected. In this example, when the socket accepts a
@@ -78,51 +86,54 @@ public class DataFeeder {
                 SelectionKey key = iterator.next();
                 System.out.println(key.toString());
 
-                // the selection key could either by the socketserver informing
-                // that a new connection has been made, or
+                // the selection key could either by the socketserver meaning a new connection has been made, 
+                // or
                 // a socket client that is ready for read/write
-                // we use the properties object attached to the channel to find
-                // out the type of channel.
+                // we use the properties object attached to the channel to find the type of channel.
                 Map<String, String> propertiesMap = (Map<String, String>)  key.attachment();
+
+                // INIT
                 if ((propertiesMap.get(channelType).equals(
                         serverChannel))) {
-
-                	// a new connection has been obtained. This channel is
-                    // therefore a socket server.
                 	
                     ServerSocketChannel serverSocketChannel = (ServerSocketChannel) key
-                            .channel();
-                    
-                    // accept the new connection on the server socket. Since the
-                    // server socket channel is marked as non blocking
-                    // this channel will return null if no client is connected.
+                            .channel(); // new channel
                     
                     SocketChannel clientSocketChannel = serverSocketChannel
                             .accept();
  
                     // TODO after setup, spawn thread and map channel to it
                     if (clientSocketChannel != null) {
-                        // set the client connection to be non blocking
                         clientSocketChannel.configureBlocking(false);
                         SelectionKey clientKey = clientSocketChannel.register(
-                                selector, SelectionKey.OP_READ,
+                                selector, 
+                                SelectionKey.OP_READ,
                                 SelectionKey.OP_WRITE);
-                        Map<String, String> clientproperties = new HashMap<String, String>();
                         
-                        System.out.println("New conneciton, so we set up a Thread");
-                        Thread feeder = new Thread(new Feeder(clientSocketChannel));
+                        Map<String, String> clientproperties = new HashMap<String, String>(); // attached on the key to be able to find stuff 
+                        
+                        System.out.println("New conneciton..."); //TODO: implement logging
+                        
+                        /* TODO: rewrite open channel/running threads mapping
+                         * Dette blir litt tullete, kan like så greit bare lage Feeder objektet og
+                         * mellomlagre det. Må uansett finne det frem og legge til filnavn når vi
+                         * får det, for så å starte tråden som serverer den filen.
+                         * Her kan vi redusere antall maps og unødvendig kompleksitet.
+                         */
+                        
+                        Feeder f = new Feeder(clientSocketChannel);
+                        Thread feeder = new Thread(f);
+                        
                         if (threadList.add(feeder)) {
                         	clientproperties.put("thread", Integer.toString(threadList.indexOf(feeder))); // map associated thread to index
+                        	feederMap.put(Integer.toString(threadList.indexOf(feeder)), f); // thread contains key to feeder object in map
                         }
-                        
+
                         clientproperties.put(channelType, clientChannel); // map channel type to client channel
-                        
-                        
-                        
                         clientKey.attach(clientproperties);
  
-                        // write something to the new created client
-                        CharBuffer buffer = CharBuffer.wrap("Ready?");
+                        // ACK to client
+                        CharBuffer buffer = CharBuffer.wrap(OKCODE +", OK");
                         while (buffer.hasRemaining()) {
                             clientSocketChannel.write(Charset.defaultCharset()
                                     .encode(buffer));
@@ -130,40 +141,38 @@ public class DataFeeder {
 
                         buffer.clear();
                     }
- 
+                // INIT COMPLETE, client ACK to 200, OK
                 } else {
-                	// TODO, when ack i  received from client, start thread and push data
-
-                	// data is available for read 
-                    // buffer for reading
-                    ByteBuffer buffer = ByteBuffer.allocate(20);
+        			//buffer for reading
+                    ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
                     SocketChannel clientChannel = (SocketChannel) key.channel();
                     //SelectionKey k = clientChannel.keyFor(key.selector());
                     //HashMap<String, String> map = (HashMap<String, String>) k.attachment();
                     int bytesRead = 0;
+
                     if (key.isReadable()) {
-                        // the channel is non blocking so keep it open till the
-                        // count is >=0
                         if ((bytesRead = clientChannel.read(buffer)) > 0) {
                             buffer.flip();
                             String resp = Charset.defaultCharset().decode(
                                     buffer).toString().trim();
-                            
                             /* 
                              * Create a simple text-based http inspired protocol for interaticon 
                              * {fName}, 200  - ok, postfixed with filename 
-                             * 400 - abort 
+                             * 400 - abort
+                             * http://www.studytrails.com/java-io/non-blocking-io-multiplexing.jsp 
                              * */
                             
-                            
                             if (resp.endsWith(OKCODE)) { // had to remove \n with trim()
-                            	System.out.print("Got 200\t");
+                            	//System.out.print("Got 200\t");
+
+                            	Feeder f = feederMap.get(propertiesMap.get("thread"));
+                            	Thread thf = threadList.get(Integer.valueOf(propertiesMap.get("thread"))); 
+                            	
                             	String[] r = resp.split(delimiter);
-                            	Thread f = threadList.get(Integer.valueOf(propertiesMap.get("thread"))); 
-                            	System.out.println(r.length);
+                            	
                             	switch (r.length) {
                             		case 1: System.out.println("ERROR: got ok from client, but no file name"); break;
-                            		case 2: System.out.println("OK received: " + resp); f.start();  break;
+                            		case 2: System.out.println("OK, requested file: " + r[0]); f.setName(r[0]); thf.start();  break;
                             		default: System.out.println("ERROR: more than one file requested?\t " + resp); break;
                             	}
                             } else if (resp.endsWith(ABORTCODE)) {
@@ -182,24 +191,9 @@ public class DataFeeder {
                         }
                     }
                 }
- 
                 // once a key is handled, it needs to be removed
                 iterator.remove();
- 
             }
         }
-	}
-
-	
-	private static void startSending(Thread feeder) {
-		// TODO Auto-generated method stub
-        feeder.start(); // launch the thread?
-
-	}
-
-
-	private static boolean spawn() {
-		
-		return false;
 	}
 }
