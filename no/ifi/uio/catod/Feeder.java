@@ -71,8 +71,6 @@ public class Feeder implements Runnable {
         	//TODO: give error message based on cause:
         	sendError("File not found, 400");
         }
-        	
- 
 	}
 	
 	/***************************
@@ -168,7 +166,9 @@ public class Feeder implements Runnable {
 
 		//System.out.println(System.getProperty("user.dir"));
 		try (
+
 			    InputStream fis = new FileInputStream(System.getProperty("user.dir") + "/" + fName);
+
 			    InputStreamReader inputStream = new InputStreamReader(fis, Charset.forName("UTF-8"));
 			    BufferedReader br = new BufferedReader(inputStream);
 			) {
@@ -176,8 +176,8 @@ public class Feeder implements Runnable {
 			    while ((currentLine = br.readLine()) != null) {
 			        content.add(currentLine);
 			    }
-			} 
-		
+			}
+	
 		return content; 
 	}
 
@@ -206,7 +206,8 @@ public class Feeder implements Runnable {
 	 * @return String with theoretical time
 	 */
 	private String stampTime() {
-		return sdf.format(cal.getTime()) + "; ";
+		
+		return Long.toString(System.currentTimeMillis());
 	}
 	
 	

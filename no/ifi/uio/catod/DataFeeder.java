@@ -134,6 +134,7 @@ public class DataFeeder {
  
                         // ACK to client
                         CharBuffer buffer = CharBuffer.wrap(OKCODE +", OK");
+
                         while (buffer.hasRemaining()) {
                             clientSocketChannel.write(Charset.defaultCharset()
                                     .encode(buffer));
@@ -155,12 +156,17 @@ public class DataFeeder {
                             buffer.flip();
                             String resp = Charset.defaultCharset().decode(
                                     buffer).toString().trim();
-                            /* 
-                             * Create a simple text-based http inspired protocol for interaticon 
-                             * {fName}, 200  - ok, postfixed with filename 
-                             * 400 - abort
-                             * http://www.studytrails.com/java-io/non-blocking-io-multiplexing.jsp 
-                             * */
+      
+							//http://www.studytrails.com/java-io/non-blocking-io-multiplexing.jsp
+                            /**
+                             * Create a simple text-based http inspired protocol for interactions
+                             * Postfixed status codes and human readable status description
+                             * ',' used as delimiter  
+                             * {fName}, 200  - OK 
+                             * {message}, 400 - abort
+                             * TODO: down sample, restart etc 
+                             ***/
+
                             
                             if (resp.endsWith(OKCODE)) { // had to remove \n with trim()
                             	//System.out.print("Got 200\t");
@@ -173,6 +179,7 @@ public class DataFeeder {
                             	switch (r.length) {
                             		case 1: System.out.println("ERROR: got ok from client, but no file name"); break;
                             		case 2: System.out.println("OK, requested file: " + r[0]); f.setName(r[0]); thf.start();  break;
+
                             		default: System.out.println("ERROR: more than one file requested?\t " + resp); break;
                             	}
                             } else if (resp.endsWith(ABORTCODE)) {
