@@ -1,5 +1,3 @@
-package no.ifi.uio.catod;
-
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -15,7 +13,6 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 import java.util.Timer;
-//import java.util.Date;
 import java.util.TimerTask;
 
 public class Feeder implements Runnable {
@@ -25,11 +22,14 @@ public class Feeder implements Runnable {
 	private int hz = 0; // number of samples pr second
 	private SocketChannel clientCh;
 	
-	private int currentLine;
+	private Timer timer;
+	private int currentLine, fileLength;
 	private List<String> fileContent;
 	
+	/* Timestamping */
 	private Calendar cal;
 	private SimpleDateFormat sdf;
+	private String s;
 
 	private int sequenceNumber;
 	/***************************
@@ -57,23 +57,26 @@ public class Feeder implements Runnable {
 	
 	@Override
 	public void run() {
-		System.out.println("in run: \t" + fileName);
+		//System.out.println("--feeder-> in run: \t" + fileName);
 		cal = Calendar.getInstance();
         sdf = new SimpleDateFormat("HH:mm:ss.SSSZ");
         
         sequenceNumber = 0;
-        
         try {
         	fileContent = readFile(fileName);
-        	Timer timer = new Timer();
+        	fileLength = fileContent.size();
+        	timer = new Timer();
             
         	timer.schedule(new TimerPusher(), 0, //initial delay
                     1 * 1); //subsequent rate
+        	
+        	
         } catch (IOException e) {
         	e.printStackTrace();
         	//TODO: give error message based on cause:
         	sendError("File not found, 400");
         }
+        //System.out.println("--feeder-> Feeder thread signing off"); 
 	}
 	
 	/***************************
@@ -91,16 +94,21 @@ public class Feeder implements Runnable {
         	try {
 				send();
 			} catch (IOException e) {
-				// TODO Could not send for some reason?
-				e.printStackTrace();
+				try {
+					clientCh.close(); // i verste fall lukkes den to ganger
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+				timer.cancel();
+				timer.purge();
+				
+				//System.out.println("--feeder-> Got this, closed timer and ch====> x"+e.getMessage() + " " + clientCh.isRegistered() + " " + clientCh.isConnected());
 			}
-        	//beepTest();
         	
         	long endTime = System.nanoTime();
         	long duration = (endTime - startTime);  //divide by 1000000 to get milliseconds.
         	float msDuration = (float) duration/1000000;
-        	System.out.println(endTime + " - " + startTime + "\t=\tDuration ms: " + msDuration ); // TODO: log instead of print.
-        	
+        	//System.out.println(endTime + " - " + startTime + "\t=\tDuration ms: " + msDuration ); // TODO: log instead of print.
         }
       }
 
@@ -111,15 +119,18 @@ public class Feeder implements Runnable {
 	 * @throws IOException 
 	 */
     private synchronized void send() throws IOException {
-    	String toSend = fileContent.get(currentLine);
+    	
+    	if (currentLine >= fileLength) {
+    		currentLine = 0;
+    	}
+    	
+    	String toSend = fileContent.get(currentLine++);
     	CharBuffer buffer = CharBuffer.wrap(toSend  + ", " + ++sequenceNumber);
         while (buffer.hasRemaining()) {
             clientCh.write(Charset.defaultCharset()
                     .encode(buffer));
         }
         buffer.clear();
-    	
-    	
     }
 	
 	/**
@@ -130,14 +141,9 @@ public class Feeder implements Runnable {
 	 * @throws IOException
 	 */
 	private List<String> readFile(String fName) throws IOException {
-		
 		List<String> content = Collections.synchronizedList(new ArrayList<String>()); 
-
-		//System.out.println(System.getProperty("user.dir"));
 		try (
-
 			    InputStream fis = new FileInputStream(System.getProperty("user.dir") + "/" + fName);
-
 			    InputStreamReader inputStream = new InputStreamReader(fis, Charset.forName("UTF-8"));
 			    BufferedReader br = new BufferedReader(inputStream);
 			) {
@@ -146,7 +152,6 @@ public class Feeder implements Runnable {
 			        content.add(currentLine);
 			    }
 			}
-	
 		return content; 
 	}
 
@@ -160,8 +165,6 @@ public class Feeder implements Runnable {
             try {
 				clientCh.write(Charset.defaultCharset()
 				        .encode(errorBuffer));
-				
-				
 			} catch (IOException sendError) {
 				// TODO Auto-generated catch block
 				sendError.printStackTrace();
@@ -204,7 +207,6 @@ public class Feeder implements Runnable {
 			// TODO Auto-generated catch block, might already be closed? 
 			e.printStackTrace();
 		}
-
         buffer.clear();
     }
     
