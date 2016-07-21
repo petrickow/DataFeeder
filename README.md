@@ -8,8 +8,9 @@ Used for feeding data, via a standard socket, to puka in order to test real time
 Communication is based on a simple HTTP inspired text protocol using post fixed
 status codes for
 
- | Comment       | Parameters    | CODE  |
- |:-------------:|:-------------:|:-----:|
- | Used as a verification, message for human readable feedback      | Message       |    200|
- | General error message, abort communication      | empty      |    400|
- | **TODO** | xxxx      |    xxx |
+_______________
+| Comment       | Parameters    | CODE  |
+|:-------------:|:-------------:|:-----:|
+| Used as a verification, message for human readable feedback | Message|200|
+| General error message, abort communication| empty|400|
+
