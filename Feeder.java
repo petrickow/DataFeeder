@@ -1,5 +1,6 @@
 import java.io.BufferedReader;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -72,9 +73,16 @@ public class Feeder implements Runnable {
         	
         	
         } catch (IOException e) {
-        	e.printStackTrace();
-        	//TODO: give error message based on cause:
-        	sendError("File not found, 400");
+        	if (e instanceof FileNotFoundException) {
+        		System.out.println("No file there sir");
+        		try {
+        			sendError("File not found,400");
+				} catch (IOException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+        		e.printStackTrace();
+        	}
         }
         //System.out.println("--feeder-> Feeder thread signing off"); 
 	}
@@ -158,19 +166,17 @@ public class Feeder implements Runnable {
 	/**
 	 * Util-method for sending error
 	 * @param toSend contains information we want to send to client
+	 * @throws IOException 
 	 */
-	private void sendError(String toSend) {
+	private void sendError(String toSend) throws IOException {
     	CharBuffer errorBuffer = CharBuffer.wrap(toSend);
     	while (errorBuffer.hasRemaining()) {
-            try {
-				clientCh.write(Charset.defaultCharset()
-				        .encode(errorBuffer));
-			} catch (IOException sendError) {
-				// TODO Auto-generated catch block
-				sendError.printStackTrace();
-			}
-        }
-	}
+			clientCh.write(Charset.defaultCharset()
+			        .encode(errorBuffer));
+		}
+    	clientCh.close();
+    }
+    	
 	
 	/** 
 	 * Appends a simulated time-stamp based on the recording frequency of the

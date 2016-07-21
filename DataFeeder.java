@@ -36,10 +36,11 @@ public class DataFeeder {
 	private static Map<String, Feeder> feederMap;
 
 	public static void main(String[] args) throws IOException {
-
+		
 		int port = 4444;
 		String localhost = "localhost";
 		
+		System.out.println("===DataFeeder--->\tRunning DataFeeder on port " + port);
 		
 		ServerSocketChannel channel = ServerSocketChannel.open();
 		channel.bind(new InetSocketAddress(localhost, port));
@@ -117,7 +118,7 @@ public class DataFeeder {
                         clientKey.attach(clientproperties);
  
                         // ACK to client
-                        CharBuffer buffer = CharBuffer.wrap(OKCODE +", OK");
+                        CharBuffer buffer = CharBuffer.wrap("OK," + OKCODE);
 
                         while (buffer.hasRemaining()) {
                             clientSocketChannel.write(Charset.defaultCharset()
@@ -126,10 +127,10 @@ public class DataFeeder {
 
                         buffer.clear();
                     }
+                }     
                 // INIT COMPLETE, expect ACK or ABORT from client
-                // Otherwise it is probably connection lost. Other cases are not
-                // considered?
-                } else {
+                // Otherwise it is probably connection lost. Other cases are not considered?
+                else {
                     if (key.isReadable()) {
                     	readFromClient(key, propertiesMap);
                     }
@@ -158,7 +159,7 @@ public class DataFeeder {
 	            String resp = Charset.defaultCharset().decode(
 	            		buffer).toString().trim();
 
-	            //move to separate method?
+	            // TODO: refactor out of this method --> handleAck() 
 		        if (resp.endsWith(OKCODE)) { // had to remove \n with trim()
 		        	//System.out.print("Got 200\t");
 		
