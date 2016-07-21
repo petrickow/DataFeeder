@@ -31,7 +31,7 @@ public class Feeder implements Runnable {
 	private Calendar cal;
 	private SimpleDateFormat sdf;
 
-	int a = 0;
+	private int sequenceNumber;
 	/***************************
 	 * Constructor need the channel we use for serving 
 	 * signal
@@ -60,6 +60,9 @@ public class Feeder implements Runnable {
 		System.out.println("in run: \t" + fileName);
 		cal = Calendar.getInstance();
         sdf = new SimpleDateFormat("HH:mm:ss.SSSZ");
+        
+        sequenceNumber = 0;
+        
         try {
         	fileContent = readFile(fileName);
         	Timer timer = new Timer();
@@ -82,6 +85,7 @@ public class Feeder implements Runnable {
     	
     	
         public void run()  {
+        	
         	long startTime = System.nanoTime();
         	
         	try {
@@ -94,14 +98,11 @@ public class Feeder implements Runnable {
         	
         	long endTime = System.nanoTime();
         	long duration = (endTime - startTime);  //divide by 1000000 to get milliseconds.
-        	System.out.println("Duration ms: " + duration/1000000 );
-  
+        	float msDuration = (float) duration/1000000;
+        	System.out.println(endTime + " - " + startTime + "\t=\tDuration ms: " + msDuration ); // TODO: log instead of print.
         	
         }
       }
-	
-
-	
 
 	/**
 	 * Loops through the file and passes discrete data points
@@ -111,7 +112,7 @@ public class Feeder implements Runnable {
 	 */
     private synchronized void send() throws IOException {
     	String toSend = fileContent.get(currentLine);
-    	CharBuffer buffer = CharBuffer.wrap(toSend);
+    	CharBuffer buffer = CharBuffer.wrap(toSend  + ", " + ++sequenceNumber);
         while (buffer.hasRemaining()) {
             clientCh.write(Charset.defaultCharset()
                     .encode(buffer));
@@ -120,38 +121,6 @@ public class Feeder implements Runnable {
     	
     	
     }
-	
-    
-    /**
-     * Decrepit 
-     * @param fileContent
-     * @throws IOException
-     */
-	public void sendLoop(ArrayList<String> fileContent) throws IOException {
-		String toSend;
-		int index = 0;
-		
-		ByteBuffer bf;
-		while (true) {
-			toSend = "";
-			
-			if (index > (fileContent.size()-1)) {
-				index = 0;
-				return; // TEMP: remove this when not testing
-			}
-			// TODO send line with time-stamp			
-			toSend = stampTime();
-			
-			toSend += fileContent.get(index++) + "";
-			CharBuffer buffer = CharBuffer.wrap(toSend);
-            while (buffer.hasRemaining()) {
-                clientCh.write(Charset.defaultCharset()
-                        .encode(buffer));
-            }
-            buffer.clear();
-		}
-	}
-	
 	
 	/**
 	 * Takes a string with name for file containing
@@ -216,7 +185,7 @@ public class Feeder implements Runnable {
 	 * gibberish to client
 	 */
     private synchronized  void beepTest() {
-    	String toSend = "Beep! " + a; 
+    	String toSend = "Beep! "; 
     	CharBuffer buffer = CharBuffer.wrap(toSend);
         while (buffer.hasRemaining()) {
             try {
