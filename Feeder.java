@@ -1,3 +1,4 @@
+
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -58,30 +59,38 @@ public class Feeder implements Runnable {
 	
 	@Override
 	public void run() {
-		//System.out.println("--feeder-> in run: \t" + fileName);
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+	        @Override
+            public void run() {
+        		System.out.println("Feeder is done"); 
+            }
+        });
+		
+		System.out.println("--Feeder-> init run, read file: \t" + fileName);
 		cal = Calendar.getInstance();
         sdf = new SimpleDateFormat("HH:mm:ss.SSSZ");
         
         sequenceNumber = 0;
         try {
+        	System.out.println("--Feeder-> init run, read file: \t" + fileName);
         	fileContent = readFile(fileName);
         	fileLength = fileContent.size();
+        	System.out.println("--Feeder-> signal length: "  + fileLength);
+        	
         	timer = new Timer();
-            
-        	timer.schedule(new TimerPusher(), 0, //initial delay
-                    1 * 1); //subsequent rate
-        	
-        	
+        	timer.schedule(new TimerPusher(), 0, 1); //task, delay, subsequent rate in ms
         } catch (IOException e) {
         	if (e instanceof FileNotFoundException) {
-        		System.out.println("No file there sir");
+        		
         		try {
+        			System.out.println("No file there sir");
         			sendError("File not found,400");
 				} catch (IOException e1) {
 					// TODO Auto-generated catch block
+					System.out.println("Lost connection as well?");
 					e1.printStackTrace();
 				}
-        		e.printStackTrace();
+        		//e.printStackTrace();
         	}
         }
         //System.out.println("--feeder-> Feeder thread signing off"); 
@@ -93,10 +102,13 @@ public class Feeder implements Runnable {
 	 *
 	 */
     class TimerPusher extends TimerTask {
-    	
-    	
         public void run()  {
-        	
+    		Runtime.getRuntime().addShutdownHook(new Thread() {
+    	        @Override
+                public void run() {
+            		System.out.println("TimerPusher is done"); 
+                }
+            });
         	long startTime = System.nanoTime();
         	
         	try {
