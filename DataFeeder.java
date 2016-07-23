@@ -1,6 +1,7 @@
 // TODO - refactor into smaller parts for exception handling
 
 import java.io.IOException;
+import java.io.WriteAbortedException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
@@ -23,13 +24,14 @@ import java.util.Set;
  *
  */
 public class DataFeeder {
-	private static String clientChannel = "clientChannel";
-	private static String serverChannel = "serverChannel";
-	private static String channelType = "channelType";
+	private static final String clientChannel = "clientChannel";
+	private static final String serverChannel = "serverChannel";
+	private static final String channelType = "channelType";
 
-	private static String delimiter = ",";
-	private static String OKCODE = "200";
-	private static String ABORTCODE = "400";
+	private static final String delimiter = ",";
+	private static final String OKCODE = "200";
+	private static final String ABORTCODE = "400";
+	private static final String REQCODE = "REQ";
 	private static int bufferSize = 100;
 
 	private static ArrayList<Thread> threadList;
@@ -160,7 +162,7 @@ public class DataFeeder {
 	            		buffer).toString().trim();
 
 	            // TODO: refactor out of this method --> handleAck() 
-		        if (resp.endsWith(OKCODE)) { // had to remove \n with trim()
+		        if (resp.endsWith(REQCODE)) { // had to remove \n with trim()
 		        	//System.out.print("Got 200\t");
 		
 		        	Feeder f = feederMap.get(propertiesMap.get("thread"));
@@ -169,10 +171,10 @@ public class DataFeeder {
 		        	String[] r = resp.split(delimiter);
 		        	
 		        	switch (r.length) {
-		        		case 1: System.out.println("--DataFeeder->\tERROR: got ok from client, but no file name"); break;
-		        		case 2: System.out.println("--DataFeeder->\tOK, requested file: " + r[0]); f.setName(r[0]); thf.start();  break;
-		
-		        		default: System.out.println("--DataFeeder->\tERROR: more than one file requested?\t " + resp); break;
+		        		case 1: System.out.println("--DataFeeder->\tReturn file list"); writeToClient(getFiles(), clientCh); break;			        		
+		        		case 2: System.out.println("--DataFeeder->\tOK, requested file: " + r[0]); f.setFileName(r[0]); thf.start();  break;
+		        		case 3: System.out.println("--DataFeeder->\tTODO: send " + r[2] + " times, instead of infinite");
+		        		default: System.out.println("--DataFeeder->\tERROR: unknown request size?\t " + resp); break;
 		        	}
 		        } else if (resp.endsWith(ABORTCODE)) {
 		        	System.out.format("--DataFeeder->\tABORT: Got abort code:\t" + resp);
@@ -180,6 +182,7 @@ public class DataFeeder {
 		        	key.cancel(); // ??? 
 		        } else {
 		        	System.out.format("--DataFeeder->\tERROR: Got unknown code\t %s\n", resp);
+		        	//TODO: write back on close
 		        }
 	        
 		        buffer.clear();
@@ -197,5 +200,25 @@ public class DataFeeder {
 			}
         }
         return bytesRead;
+	}
+	private static void writeToClient(String toSend, SocketChannel ch) {
+    	CharBuffer buffer = CharBuffer.wrap(toSend);
+        while (buffer.hasRemaining()) {
+            try {
+            	ch.write(Charset.defaultCharset()
+                    .encode(buffer));
+            } catch (IOException e) {
+            	e.printStackTrace();
+            }
+        }
+        buffer.clear();
+	}
+	
+	/**
+	 * Mocked method.
+	 * @return
+	 */
+	private static String getFiles() {
+		return "signal.txt"; 
 	}
 }

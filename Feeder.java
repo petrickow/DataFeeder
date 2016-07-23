@@ -48,7 +48,7 @@ public class Feeder implements Runnable {
 	 * Set the file name we want to read
 	 * the signals from
 	 * **/
-	public boolean setName(String fName) {
+	public boolean setFileName(String fName) {
 		if (fName.length() == 0) {
 			return false;
 		}
