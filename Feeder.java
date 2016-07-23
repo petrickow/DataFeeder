@@ -81,7 +81,6 @@ public class Feeder implements Runnable {
         	timer.schedule(new TimerPusher(), 0, 1); //task, delay, subsequent rate in ms
         } catch (IOException e) {
         	if (e instanceof FileNotFoundException) {
-        		
         		try {
         			System.out.println("No file there sir");
         			sendError("File not found,400");
@@ -98,17 +97,22 @@ public class Feeder implements Runnable {
 	
 	/***************************
 	 * Timed task to run the serving
+	 * 
+	 * TODO, find out why these internal classes are not 
+	 * cleared from the heap...
 	 * @author Cato Danielsen
 	 *
 	 */
     class TimerPusher extends TimerTask {
         public void run()  {
+    		/*If we add a shutdown hook to all of the threads, they
+    		 * are not properly cleaned up by GC
     		Runtime.getRuntime().addShutdownHook(new Thread() {
     	        @Override
                 public void run() {
             		System.out.println("TimerPusher is done"); 
                 }
-            });
+            });*/
         	long startTime = System.nanoTime();
         	
         	try {
@@ -129,6 +133,7 @@ public class Feeder implements Runnable {
         	long duration = (endTime - startTime);  //divide by 1000000 to get milliseconds.
         	float msDuration = (float) duration/1000000;
         	//System.out.println(endTime + " - " + startTime + "\t=\tDuration ms: " + msDuration ); // TODO: log instead of print.
+        	
         }
       }
 
