@@ -1,11 +1,9 @@
-
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
@@ -19,16 +17,15 @@ import java.util.TimerTask;
 
 public class Feeder implements Runnable {
 
-	/* To avoid null reference */
+//	To avoid null reference
 	private String fileName = "default.txt";
-	private int hz = 0; // number of samples pr second
-	private SocketChannel clientCh;
+	private SocketChannel clientChannel;
 	
 	private Timer timer;
 	private int currentLine, fileLength;
 	private List<String> fileContent;
 	
-	/* Timestamping */
+//	Timestamping
 	private Calendar cal;
 	private SimpleDateFormat sdf;
 	private String s;
@@ -41,7 +38,7 @@ public class Feeder implements Runnable {
 	 * @param clientChannel
 	 */
 	public Feeder(SocketChannel clientChannel) {
-		clientCh = clientChannel;
+		this.clientChannel = clientChannel;
 	}
 
 	/***************************
@@ -59,14 +56,6 @@ public class Feeder implements Runnable {
 	
 	@Override
 	public void run() {
-		Runtime.getRuntime().addShutdownHook(new Thread() {
-	        @Override
-            public void run() {
-        		System.out.println("Feeder is done"); 
-            }
-        });
-		
-		System.out.println("--Feeder-> init run, read file: \t" + fileName);
 		cal = Calendar.getInstance();
         sdf = new SimpleDateFormat("HH:mm:ss.SSSZ");
         
@@ -82,58 +71,60 @@ public class Feeder implements Runnable {
         } catch (IOException e) {
         	if (e instanceof FileNotFoundException) {
         		try {
-        			System.out.println("No file there sir");
+        			System.out.println("File not found, sir");
         			sendError("File not found,400");
-				} catch (IOException e1) {
-					// TODO Auto-generated catch block
-					System.out.println("Lost connection as well?");
-					e1.printStackTrace();
+				} catch (IOException networkError) {
+					System.out.println("Lost connection when trying to send 'File not found' error message.");
+					networkError.printStackTrace();
 				}
-        		//e.printStackTrace();
         	}
         }
-        //System.out.println("--feeder-> Feeder thread signing off"); 
+//      System.out.println("--feeder-> Feeder thread signing off"); 
 	}
 	
 	/***************************
 	 * Timed task to run the serving
 	 * 
 	 * TODO, find out why these internal classes are not 
-	 * cleared from the heap...
+	 * cleared from the heap... potential memory leak
 	 * @author Cato Danielsen
 	 *
 	 */
     class TimerPusher extends TimerTask {
         public void run()  {
     		/*If we add a shutdown hook to all of the threads, they
-    		 * are not properly cleaned up by GC
-    		Runtime.getRuntime().addShutdownHook(new Thread() {
-    	        @Override
-                public void run() {
-            		System.out.println("TimerPusher is done"); 
-                }
-            });*/
+    		 * are not properly cleaned up by GC */
+//    		Runtime.getRuntime().addShutdownHook(new Thread() {
+//    	        @Override
+//                public void run() {
+//            		System.out.println("TimerPusher is done"); 
+//                }
+//			});
+        	
         	long startTime = System.nanoTime();
         	
         	try {
 				send();
+//				if (sequenceNumber == fileLength) { // Send the file once 
+//					timer.cancel();
+//					timer.purge();
+//				}
 			} catch (IOException e) {
 				try {
-					clientCh.close(); // i verste fall lukkes den to ganger
+					clientChannel.close(); // i verste fall lukkes den to ganger
 				} catch (IOException e1) {
 					e1.printStackTrace();
 				}
 				timer.cancel();
 				timer.purge();
-				
-				//System.out.println("--feeder-> Got this, closed timer and ch====> x"+e.getMessage() + " " + clientCh.isRegistered() + " " + clientCh.isConnected());
+//				System.out.println("--feeder-> Got this, closed timer and ch====> x"+e.getMessage() + " " + clientCh.isRegistered() + " " + clientCh.isConnected());
 			}
         	
         	long endTime = System.nanoTime();
         	long duration = (endTime - startTime);  //divide by 1000000 to get milliseconds.
         	float msDuration = (float) duration/1000000;
-        	//System.out.println(endTime + " - " + startTime + "\t=\tDuration ms: " + msDuration ); // TODO: log instead of print.
         	
+//        	System.out.println(endTime + " - " + startTime + "\t=\tDuration ms: " + msDuration ); // TODO: log instead of print.
         }
       }
 
@@ -150,9 +141,18 @@ public class Feeder implements Runnable {
     	}
     	
     	String toSend = fileContent.get(currentLine++);
-    	CharBuffer buffer = CharBuffer.wrap(toSend  + ", " + ++sequenceNumber);
+
+    	if (toSend.length() > 9) { // Debugging
+    		System.out.println("===ERROR-Feeder->\t" + toSend); 
+    	}
+    	
+    	/* We add delimiter because:
+    	 * *	When sending every ms, the socket sometimes get congested and 
+    	 * 		the client reads multiple tuples
+    	 * *	To be able to split these congestion we add the ';' */
+    	CharBuffer buffer = CharBuffer.wrap("<" + toSend + "> ");
         while (buffer.hasRemaining()) {
-            clientCh.write(Charset.defaultCharset()
+            clientChannel.write(Charset.defaultCharset()
                     .encode(buffer));
         }
         buffer.clear();
@@ -188,10 +188,10 @@ public class Feeder implements Runnable {
 	private void sendError(String toSend) throws IOException {
     	CharBuffer errorBuffer = CharBuffer.wrap(toSend);
     	while (errorBuffer.hasRemaining()) {
-			clientCh.write(Charset.defaultCharset()
+			clientChannel.write(Charset.defaultCharset()
 			        .encode(errorBuffer));
 		}
-    	clientCh.close();
+    	clientChannel.close();
     }
     	
 	
@@ -200,38 +200,7 @@ public class Feeder implements Runnable {
 	 * signal being sent
 	 * @return String with theoretical time
 	 */
-	private String stampTime() {
-		
+	private String stampTimeMillis() {
 		return Long.toString(System.currentTimeMillis());
 	}
-	
-	
-	/**
-	 * Test method used in development to pass some 
-	 * gibberish to client
-	 */
-    private synchronized  void beepTest() {
-    	String toSend = "Beep! "; 
-    	CharBuffer buffer = CharBuffer.wrap(toSend);
-        while (buffer.hasRemaining()) {
-            try {
-				clientCh.write(Charset.defaultCharset()
-				        .encode(buffer));
-				
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-        }
-        
-    	try {
-			clientCh.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block, might already be closed? 
-			e.printStackTrace();
-		}
-        buffer.clear();
-    }
-    
-	
 }

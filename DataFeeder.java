@@ -32,7 +32,9 @@ public class DataFeeder {
 	private static final String OKCODE = "200";
 	private static final String ABORTCODE = "400";
 	private static final String REQCODE = "REQ";
-	private static int bufferSize = 100;
+	
+	
+	private static int bufferSize = 30;
 
 	private static ArrayList<Thread> threadList;
 	private static Map<String, Feeder> feederMap;
@@ -57,7 +59,7 @@ public class DataFeeder {
 		/* Maps and lists of running threads, properties and of 
 		 * feeder instances TODO: Remove all references to feeder and thread
 		 * on connection close
-		 * Week hash map? 
+		 * Weak hash map? 
 		 */
 		threadList = new ArrayList<Thread>();
 		feederMap = new HashMap<String, Feeder>();
@@ -65,13 +67,17 @@ public class DataFeeder {
         
         properties.put(channelType, serverChannel);
         socketServerSelectionKey.attach(properties);
+        Iterator<SelectionKey> iterator;
+        Set<SelectionKey> selectedKeys;
         
-        for (;;) {
-            if (selector.selectNow() == 0)
+        do {
+            if (selector.selectNow() == 0) { // Blocking select with timeout for debug
                 continue;
+            }
+            
             // the select method returns with a list of selected keys
-            Set<SelectionKey> selectedKeys = selector.selectedKeys();
-            Iterator<SelectionKey> iterator = selectedKeys.iterator();
+            selectedKeys = selector.selectedKeys();
+            iterator = selectedKeys.iterator();
             
             while (iterator.hasNext()) {
                 SelectionKey key = iterator.next();
@@ -90,7 +96,7 @@ public class DataFeeder {
                     SocketChannel clientSocketChannel = serverSocketChannel
                             .accept();
 
-                    // TODO after setup, spawn thread and map channel to it
+                    // DONE after setup, spawn thread and map channel to it
                     if (clientSocketChannel != null) {
                         clientSocketChannel.configureBlocking(false);
                         SelectionKey clientKey = clientSocketChannel.register(
@@ -100,7 +106,7 @@ public class DataFeeder {
                         
                         Map<String, String> clientproperties = new HashMap<String, String>(); // attached on the key to be able to find stuff 
                         
-//                        System.out.println("New conneciton..."); //TODO: implement logging
+//                    	System.out.println("New conneciton..."); //TODO: implement logging
                         
                         /* TODO: rewrite open channel/running threads mapping
                          * Dette blir litt tullete, kan like så greit bare lage Feeder objektet og
@@ -119,7 +125,7 @@ public class DataFeeder {
                         clientproperties.put(channelType, clientChannel); // map channel type to client channel
                         clientKey.attach(clientproperties);
  
-                        // ACK to client
+//                      ACK to client
                         CharBuffer buffer = CharBuffer.wrap("OK," + OKCODE);
 
                         while (buffer.hasRemaining()) {
@@ -130,16 +136,17 @@ public class DataFeeder {
                         buffer.clear();
                     }
                 }     
-                // INIT COMPLETE, expect ACK or ABORT from client
-                // Otherwise it is probably connection lost. Other cases are not considered?
+//				INIT COMPLETE, expect ACK or ABORT from client
+//				Otherwise it is probably connection lost. Other cases are not considered?
                 else {
                     if (key.isReadable()) {
                     	readFromClient(key, propertiesMap);
                     }
                 }
-                //once a key is handled, it needs to be removed
-            iterator.remove();}
-        }
+//              once a key is handled, it needs to be removed
+            iterator.remove();
+            }
+        } while (true);
     }
 	
 	/**
@@ -149,7 +156,7 @@ public class DataFeeder {
 	 * @param propertiesMap
 	 * @return
 	 */
-	//http://www.studytrails.com/java-io/non-blocking-io-multiplexing.jsp
+//	http://www.studytrails.com/java-io/non-blocking-io-multiplexing.jsp
 	private static int readFromClient(SelectionKey key, Map<String, String> propertiesMap) {
         ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
         SocketChannel clientCh = (SocketChannel) key.channel();
@@ -161,9 +168,9 @@ public class DataFeeder {
 	            String resp = Charset.defaultCharset().decode(
 	            		buffer).toString().trim();
 
-	            // TODO: refactor out of this method --> handleAck() 
+//	            TODO: refactor out of this method --> handleAck() 
 		        if (resp.endsWith(REQCODE)) { // had to remove \n with trim()
-		        	//System.out.print("Got 200\t");
+//		        	System.out.print("Got 200\t");
 		
 		        	Feeder f = feederMap.get(propertiesMap.get("thread"));
 		        	Thread thf = threadList.get(Integer.valueOf(propertiesMap.get("thread"))); 
@@ -193,7 +200,7 @@ public class DataFeeder {
     			clientCh.close();
 				key.cancel();
 			} catch (IOException e1) {
-				// TODO Auto-generated catch block
+//				TODO Auto-generated catch block
 				System.out.println("===EXCEPTION--DataFeeder->\tAttempt to close the socket/key failed!");
 				e1.printStackTrace();
 				return -1;
