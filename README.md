@@ -11,10 +11,10 @@ status codes as predefined commands. Parameters are delimited with ',' (at the m
 ----------------------------
 
 
-| Comment       | Parameters    | CODE  |
-|:-------------:|:-------------:|:-----:|
-| Empty REQ is used for retrieving available signals | -empty- | REQ|
-| REQest file name for usage in stream, TODO: num: of itterations (default=0 infinite) | file name, num=0| REQ|
-|TODO: Ask the server to reduce sending rate | requested rate| 300|
-| Used as a verification, message for human readable feedback | message|200|
-| General error message, abort communication| -empty-|400|
+| CODE       | Parameters    | Comment  |
+|:----------:|:-------------:|:-----:|
+|REQ| -empty- | Empty REQ is used for retrieving available signals |  
+|REQ| file name, num=0| REQest file name for usage in stream, TODO: num: of itterations (default=0 infinite) |
+|300| requested rate| TODO: Ask the server to reduce sending rate |
+|200| message| Used as a verification, message for human readable feedback |
+|400| -empty-| General error message, abort communication|
